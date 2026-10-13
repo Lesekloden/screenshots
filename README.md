@@ -10,7 +10,7 @@
     <a href="https://packagist.org/packages/lesekloden/lesekloden-screenshots"><img src="https://img.shields.io/packagist/dt/lesekloden/lesekloden-screenshots.svg?style=flat-square" alt="Total Downloads"></a>
 </p>
 
-Laravel package skeleton for Lesekloden Screenshots.
+Capture page sections as PNG screenshots using Laravel and Browsershot.
 
 ## Installation
 
@@ -20,9 +20,63 @@ You can install the package via Composer:
 composer require lesekloden/lesekloden-screenshots
 ```
 
-## Status
+## Usage
 
-This package is an empty skeleton. Package functionality will be added later.
+Install Puppeteer in the host application, including its browser download:
+
+```bash
+npm install puppeteer
+```
+
+Node.js and npm must be on the PATH. Browsershot uses the host application's `node_modules` directory. Set `APP_URL` to your running application so the browser can reach its pages.
+
+Run the capture command:
+
+```bash
+php artisan make:screenshots
+```
+
+The capture list comes from the original `core` service. The host application must define these named routes and page elements:
+
+| Route | Screenshot elements (`data-screenshot`) | Output directory |
+| --- | --- | --- |
+| `home` | `with-navbar`, `hero`, `content` | `home` |
+| `sortable.files` | `with-navbar`, `hero`, `content` | `sortable-files` |
+| `sortable.table` | `with-navbar`, `hero`, `content` | `sortable-table` |
+| `qr` | `with-navbar`, `hero` | `qr` |
+
+Add attributes to the sections to capture, for example:
+
+```html
+<section data-screenshot="hero">...</section>
+```
+
+The command captures 11 sections, writing PNG files under `resources/screenshots` in the host application. Existing files with the same names are overwritten. All viewports are 1280 pixels wide; heights follow the original service (768 pixels for home content, 1024 for other sections). The browser uses a 60-second timeout and a 250-millisecond delay. A missing route, element, or browser failure stops the command and returns a nonzero exit code.
+
+Generate programmatically through the facade:
+
+```php
+use Lesekloden\Screenshots\Facades\Screenshots;
+
+$pages = Screenshots::captureAll();
+```
+
+The result groups screenshot metadata (`name`, `path`, `width`, `height`) by output directory. For individual captures, resolve the service:
+
+```php
+use Lesekloden\Screenshots\ScreenshotsCapture;
+
+$result = app(ScreenshotsCapture::class)->captureScreenshot(
+    path: 'https://example.com/books',
+    directory: 'books',
+    name: 'hero',
+    filename: 'screenshot-books-hero',
+    width: 1280,
+    height: 1024,
+);
+```
+
+An optional `configure` closure receives the Browsershot instance before selecting the element, allowing custom browser settings. The package supplies the capture service and command; host routes and page templates stay in the application.
 
 ## Development
 
