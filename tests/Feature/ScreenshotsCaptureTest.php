@@ -5,8 +5,10 @@ declare(strict_types=1);
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\ServiceProvider;
 use Lesekloden\Screenshots\Facades\Screenshots;
 use Lesekloden\Screenshots\ScreenshotsCapture;
+use Lesekloden\Screenshots\ScreenshotsServiceProvider;
 use Spatie\Browsershot\Browsershot;
 
 beforeEach(function () {
@@ -42,6 +44,19 @@ it('captures the core page sections with their selectors, viewport sizes and out
         };
     });
 
+    config(['screenshots.paths' => [
+        ['route' => 'home', 'directory' => 'home', 'name' => 'with-navbar', 'filename' => 'screenshot-homepage-with-navbar', 'height' => 1024],
+        ['route' => 'home', 'directory' => 'home', 'name' => 'hero', 'filename' => 'screenshot-homepage-hero', 'height' => 1024],
+        ['route' => 'home', 'directory' => 'home', 'name' => 'content', 'filename' => 'screenshot-homepage-content', 'height' => 768],
+        ['route' => 'sortable.files', 'directory' => 'sortable-files', 'name' => 'with-navbar', 'filename' => 'screenshot-sortable-files-with-navbar', 'height' => 1024],
+        ['route' => 'sortable.files', 'directory' => 'sortable-files', 'name' => 'hero', 'filename' => 'screenshot-sortable-files-hero', 'height' => 1024],
+        ['route' => 'sortable.files', 'directory' => 'sortable-files', 'name' => 'content', 'filename' => 'screenshot-sortable-files-content', 'height' => 1024],
+        ['route' => 'sortable.table', 'directory' => 'sortable-table', 'name' => 'with-navbar', 'filename' => 'screenshot-sortable-table-with-navbar', 'height' => 1024],
+        ['route' => 'sortable.table', 'directory' => 'sortable-table', 'name' => 'hero', 'filename' => 'screenshot-sortable-table-hero', 'height' => 1024],
+        ['route' => 'sortable.table', 'directory' => 'sortable-table', 'name' => 'content', 'filename' => 'screenshot-sortable-table-content', 'height' => 1024],
+        ['route' => 'qr', 'directory' => 'qr', 'name' => 'with-navbar', 'filename' => 'screenshot-qr-with-navbar', 'height' => 1024],
+        ['route' => 'qr', 'directory' => 'qr', 'name' => 'hero', 'filename' => 'screenshot-qr-hero', 'height' => 1024],
+    ]]);
     $pages = Screenshots::captureAll();
 
     expect(array_keys($pages))->toBe(['home', 'sortable-files', 'sortable-table', 'qr'])
@@ -52,7 +67,7 @@ it('captures the core page sections with their selectors, viewport sizes and out
         ->and($captured)->toHaveCount(11)
         ->and($pages['home'][0])->toBe([
             'name' => 'with-navbar',
-            'path' => resource_path('screenshots/home/screenshot-homepage-with-navbar.png'),
+            'path' => base_path('storage/app/private/screenshots/home/screenshot-homepage-with-navbar.png'),
             'width' => 1280,
             'height' => 1024,
         ]);
@@ -67,7 +82,7 @@ it('captures the core page sections with their selectors, viewport sizes and out
     }
 
     expect($captured[3][1]['url'])->toBe(route('sortable.files'))
-        ->and($captured[10][0])->toBe(resource_path('screenshots/qr/screenshot-qr-hero.png'));
+        ->and($captured[10][0])->toBe(base_path('storage/app/private/screenshots/qr/screenshot-qr-hero.png'));
 });
 
 it('captures custom URLs and normalizes filenames while allowing browser customization', function () {
@@ -82,14 +97,14 @@ it('captures custom URLs and normalizes filenames while allowing browser customi
     $browser->shouldReceive('setNodeModulePath')->with(base_path('node_modules'))->once()->andReturnSelf();
     $browser->shouldReceive('waitUntilNetworkIdle')->once()->andReturnSelf();
     $browser->shouldReceive('select')->with('[data-screenshot="hero"]')->once()->andReturnSelf();
-    $browser->shouldReceive('save')->with(resource_path('screenshots/books/new-releases.png'))->once();
+    $browser->shouldReceive('save')->with(base_path('storage/app/private/screenshots/books/new-releases.png'))->once();
 
     $result = app(ScreenshotsCapture::class)->captureScreenshot(
         'https://other.test/books', 'books', 'hero', 'New Releases!', 640, 480,
         fn (Browsershot $browser) => $browser->waitUntilNetworkIdle(),
     );
 
-    expect($result['path'])->toBe(resource_path('screenshots/books/new-releases.png'));
+    expect($result['path'])->toBe(base_path('storage/app/private/screenshots/books/new-releases.png'));
 });
 
 it('rejects invalid output directories', function (string $directory) {
@@ -105,4 +120,33 @@ it('reports a missing application URL', function () {
     config(['app.url' => '']);
     expect(fn () => app(ScreenshotsCapture::class)->captureScreenshot('/', 'home', 'hero', 'hero', 640, 480))
         ->toThrow(RuntimeException::class, 'Set a valid APP_URL');
+});
+
+it('captures configured full pages into a custom output directory', function () {
+    config(['screenshots.paths' => ['/about', 'route:qr'], 'screenshots.output_directory' => 'storage/captures']);
+    $browser = Mockery::mock(Browsershot::class);
+    $this->app->instance(Browsershot::class, $browser);
+    $browser->shouldReceive('setUrl')->with('https://example.test/about')->once()->andReturnSelf();
+    $browser->shouldReceive('setUrl')->with(route('qr'))->once()->andReturnSelf();
+    foreach (['windowSize', 'timeout', 'setDelay', 'setNodeBinary', 'setNpmBinary', 'setNodeModulePath', 'fullPage'] as $method) {
+        $browser->shouldReceive($method)->twice()->andReturnSelf();
+    }
+    $browser->shouldReceive('save')->with(base_path('storage/captures/about/about.png'))->once();
+    $browser->shouldReceive('save')->with(base_path('storage/captures/qr/qr.png'))->once();
+    expect(Screenshots::captureAll())->toHaveKeys(['about', 'qr']);
+});
+
+it('starts with an empty configurable capture list', function () {
+    expect(config('screenshots.paths'))->toBe([])
+        ->and(config('screenshots.output_directory'))->toBe('storage/app/private/screenshots')
+        ->and(Screenshots::captureAll())->toBe([]);
+});
+
+it('publishes screenshot configuration', function () {
+    $this->artisan('vendor:publish', ['--tag' => 'lesekloden-screenshots-config', '--force' => true])->assertSuccessful();
+    $paths = ServiceProvider::pathsToPublish(ScreenshotsServiceProvider::class, 'lesekloden-screenshots-config');
+    expect($paths)->toHaveCount(1);
+    $published = array_values($paths)[0];
+    expect(is_file($published))->toBeTrue();
+    unlink($published);
 });

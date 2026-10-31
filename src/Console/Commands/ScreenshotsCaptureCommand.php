@@ -10,7 +10,7 @@ use Throwable;
 
 final class ScreenshotsCaptureCommand extends Command
 {
-    protected $signature = 'make:screenshots';
+    protected $signature = 'generate:screenshots';
 
     protected $description = 'Capture all configured page sections as PNG screenshots.';
 

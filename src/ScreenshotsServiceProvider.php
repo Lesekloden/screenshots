@@ -14,6 +14,7 @@ class ScreenshotsServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__.'/../config/screenshots.php', 'screenshots');
         $this->app->singleton(ScreenshotsCapture::class);
         $this->app->singleton(Screenshots::class);
     }
@@ -28,5 +29,8 @@ class ScreenshotsServiceProvider extends ServiceProvider
         }
 
         $this->commands([ScreenshotsCaptureCommand::class]);
+        $this->publishes([
+            __DIR__.'/../config/screenshots.php' => config_path('screenshots.php'),
+        ], ['lesekloden-screenshots', 'lesekloden-screenshots-config']);
     }
 }

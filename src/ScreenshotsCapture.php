@@ -22,59 +22,44 @@ class ScreenshotsCapture
      */
     public function captureAll(): array
     {
-        return [
-            'home' => $this->captureHome(),
-            'sortable-files' => $this->captureSortableFiles(),
-            'sortable-table' => $this->captureSortableTable(),
-            'qr' => $this->captureQr(),
-        ];
-    }
+        $paths = config('screenshots.paths', []);
 
-    /**
-     * @return list<array{name: string, path: string, width: int, height: int}>
-     */
-    private function captureHome(): array
-    {
-        return [
-            $this->captureScreenshot(route('home'), 'home', 'with-navbar', 'screenshot-homepage-with-navbar', 1280, 1024),
-            $this->captureScreenshot(route('home'), 'home', 'hero', 'screenshot-homepage-hero', 1280, 1024),
-            $this->captureScreenshot(route('home'), 'home', 'content', 'screenshot-homepage-content', 1280, 768),
-        ];
-    }
+        if (! is_array($paths)) {
+            throw new InvalidArgumentException('The screenshots.paths setting must be an array.');
+        }
 
-    /**
-     * @return list<array{name: string, path: string, width: int, height: int}>
-     */
-    private function captureSortableFiles(): array
-    {
-        return [
-            $this->captureScreenshot(route('sortable.files'), 'sortable-files', 'with-navbar', 'screenshot-sortable-files-with-navbar', 1280, 1024),
-            $this->captureScreenshot(route('sortable.files'), 'sortable-files', 'hero', 'screenshot-sortable-files-hero', 1280, 1024),
-            $this->captureScreenshot(route('sortable.files'), 'sortable-files', 'content', 'screenshot-sortable-files-content', 1280, 1024),
-        ];
-    }
+        $pages = [];
 
-    /**
-     * @return list<array{name: string, path: string, width: int, height: int}>
-     */
-    private function captureSortableTable(): array
-    {
-        return [
-            $this->captureScreenshot(route('sortable.table'), 'sortable-table', 'with-navbar', 'screenshot-sortable-table-with-navbar', 1280, 1024),
-            $this->captureScreenshot(route('sortable.table'), 'sortable-table', 'hero', 'screenshot-sortable-table-hero', 1280, 1024),
-            $this->captureScreenshot(route('sortable.table'), 'sortable-table', 'content', 'screenshot-sortable-table-content', 1280, 1024),
-        ];
-    }
+        foreach ($paths as $entry) {
+            if (is_string($entry)) {
+                $entry = ['path' => $entry];
+            }
 
-    /**
-     * @return list<array{name: string, path: string, width: int, height: int}>
-     */
-    private function captureQr(): array
-    {
-        return [
-            $this->captureScreenshot(route('qr'), 'qr', 'with-navbar', 'screenshot-qr-with-navbar', 1280, 1024),
-            $this->captureScreenshot(route('qr'), 'qr', 'hero', 'screenshot-qr-hero', 1280, 1024),
-        ];
+            if (! is_array($entry)) {
+                throw new InvalidArgumentException('Each screenshot path must be a string or an array.');
+            }
+
+            $path = isset($entry['route'])
+                ? route($entry['route'], $entry['parameters'] ?? [])
+                : ($entry['path'] ?? '');
+
+            if (! is_string($path) || trim($path) === '') {
+                throw new InvalidArgumentException('Each screenshot entry must specify a path or route.');
+            }
+
+            $url = $this->urlForPath($path);
+            $slug = Str::slug(trim((string) parse_url($url, PHP_URL_PATH), '/')) ?: 'home';
+            $directory = $entry['directory'] ?? $slug;
+            $name = $entry['name'] ?? '';
+            $filename = $entry['filename'] ?? ($name === '' ? $slug : $slug.'-'.$name);
+            $pages[$directory][] = $this->captureScreenshot(
+                $url, $directory, $name, $filename,
+                (int) ($entry['width'] ?? config('screenshots.width', 1280)),
+                (int) ($entry['height'] ?? config('screenshots.height', 1024)),
+            );
+        }
+
+        return $pages;
     }
 
     /**
@@ -90,7 +75,18 @@ class ScreenshotsCapture
         ?Closure $configure = null,
     ): array {
         $directory = $this->safeDirectory($directory);
-        $outputDirectory = resource_path('screenshots').DIRECTORY_SEPARATOR.$directory;
+        $root = (string) config('screenshots.output_directory', 'storage/app/private/screenshots');
+
+        if (trim($root) === '') {
+            throw new InvalidArgumentException('The screenshots.output_directory setting must not be empty.');
+        }
+
+        $root = Str::startsWith($root, DIRECTORY_SEPARATOR) ? $root : base_path($root);
+        $outputDirectory = rtrim($root, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$directory;
+
+        if ($width < 1 || $height < 1) {
+            throw new InvalidArgumentException('Screenshot dimensions must be positive.');
+        }
         $outputFilename = $this->filenameFor($filename);
         $targetPath = $outputDirectory.DIRECTORY_SEPARATOR.$outputFilename;
 
@@ -102,9 +98,13 @@ class ScreenshotsCapture
             $configure($browser);
         }
 
-        $browser
-            ->select($this->selectorFor($name))
-            ->save($targetPath);
+        if ($name !== '') {
+            $browser->select($this->selectorFor($name));
+        } else {
+            $browser->fullPage();
+        }
+
+        $browser->save($targetPath);
 
         return [
             'name' => $name,
@@ -118,8 +118,8 @@ class ScreenshotsCapture
     {
         return app(Browsershot::class)->setUrl($url)
             ->windowSize($width, $height)
-            ->timeout(60)
-            ->setDelay(250)
+            ->timeout((int) config('screenshots.timeout', 60))
+            ->setDelay((int) config('screenshots.delay', 250))
             ->setNodeBinary('node')
             ->setNpmBinary('npm')
             ->setNodeModulePath(base_path('node_modules'));
@@ -127,6 +127,10 @@ class ScreenshotsCapture
 
     private function urlForPath(string $path): string
     {
+        if (str_starts_with($path, 'route:')) {
+            return route(substr($path, 6));
+        }
+
         if (filter_var($path, FILTER_VALIDATE_URL) !== false) {
             return $path;
         }
