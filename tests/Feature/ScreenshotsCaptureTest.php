@@ -67,7 +67,7 @@ it('captures the core page sections with their selectors, viewport sizes and out
         ->and($captured)->toHaveCount(11)
         ->and($pages['home'][0])->toBe([
             'name' => 'with-navbar',
-            'path' => base_path('storage/app/private/screenshots/home/screenshot-homepage-with-navbar.png'),
+            'path' => base_path('storage/app/private/screenshots').DIRECTORY_SEPARATOR.'home'.DIRECTORY_SEPARATOR.'screenshot-homepage-with-navbar.png',
             'width' => 1280,
             'height' => 1024,
         ]);
@@ -82,7 +82,7 @@ it('captures the core page sections with their selectors, viewport sizes and out
     }
 
     expect($captured[3][1]['url'])->toBe(route('sortable.files'))
-        ->and($captured[10][0])->toBe(base_path('storage/app/private/screenshots/qr/screenshot-qr-hero.png'));
+        ->and($captured[10][0])->toBe(base_path('storage/app/private/screenshots').DIRECTORY_SEPARATOR.'qr'.DIRECTORY_SEPARATOR.'screenshot-qr-hero.png');
 });
 
 it('captures custom URLs and normalizes filenames while allowing browser customization', function () {
@@ -97,14 +97,14 @@ it('captures custom URLs and normalizes filenames while allowing browser customi
     $browser->shouldReceive('setNodeModulePath')->with(base_path('node_modules'))->once()->andReturnSelf();
     $browser->shouldReceive('waitUntilNetworkIdle')->once()->andReturnSelf();
     $browser->shouldReceive('select')->with('[data-screenshot="hero"]')->once()->andReturnSelf();
-    $browser->shouldReceive('save')->with(base_path('storage/app/private/screenshots/books/new-releases.png'))->once();
+    $browser->shouldReceive('save')->with(base_path('storage/app/private/screenshots').DIRECTORY_SEPARATOR.'books'.DIRECTORY_SEPARATOR.'new-releases.png')->once();
 
     $result = app(ScreenshotsCapture::class)->captureScreenshot(
         'https://other.test/books', 'books', 'hero', 'New Releases!', 640, 480,
         fn (Browsershot $browser) => $browser->waitUntilNetworkIdle(),
     );
 
-    expect($result['path'])->toBe(base_path('storage/app/private/screenshots/books/new-releases.png'));
+    expect($result['path'])->toBe(base_path('storage/app/private/screenshots').DIRECTORY_SEPARATOR.'books'.DIRECTORY_SEPARATOR.'new-releases.png');
 });
 
 it('rejects invalid output directories', function (string $directory) {
@@ -131,8 +131,8 @@ it('captures configured full pages into a custom output directory', function () 
     foreach (['windowSize', 'timeout', 'setDelay', 'setNodeBinary', 'setNpmBinary', 'setNodeModulePath', 'fullPage'] as $method) {
         $browser->shouldReceive($method)->twice()->andReturnSelf();
     }
-    $browser->shouldReceive('save')->with(base_path('storage/captures/about/about.png'))->once();
-    $browser->shouldReceive('save')->with(base_path('storage/captures/qr/qr.png'))->once();
+    $browser->shouldReceive('save')->with(base_path('storage/captures').DIRECTORY_SEPARATOR.'about'.DIRECTORY_SEPARATOR.'about.png')->once();
+    $browser->shouldReceive('save')->with(base_path('storage/captures').DIRECTORY_SEPARATOR.'qr'.DIRECTORY_SEPARATOR.'qr.png')->once();
     expect(Screenshots::captureAll())->toHaveKeys(['about', 'qr']);
 });
 
