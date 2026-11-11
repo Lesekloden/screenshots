@@ -13,6 +13,7 @@ use Spatie\Browsershot\Browsershot;
 
 beforeEach(function () {
     $this->app->setBasePath(sys_get_temp_dir().'/lesekloden-screenshots-'.bin2hex(random_bytes(8)));
+    $this->app->useConfigPath(base_path('config'));
     config(['app.url' => 'https://example.test/', 'screenshots.viewports' => ['desktop' => ['width' => 1280, 'height' => 1024]]]);
     URL::forceRootUrl('https://example.test');
     URL::forceScheme('https');
