@@ -13,7 +13,7 @@ use Spatie\Browsershot\Browsershot;
 
 beforeEach(function () {
     $this->app->setBasePath(sys_get_temp_dir().'/lesekloden-screenshots-'.bin2hex(random_bytes(8)));
-    config(['app.url' => 'https://example.test/']);
+    config(['app.url' => 'https://example.test/', 'screenshots.viewports' => ['desktop' => ['width' => 1280, 'height' => 1024]]]);
     URL::forceRootUrl('https://example.test');
     URL::forceScheme('https');
     foreach (['home' => '/', 'sortable.files' => '/sortable-files', 'sortable.table' => '/sortable-table', 'qr' => '/qr'] as $name => $path) {
@@ -45,17 +45,17 @@ it('captures the core page sections with their selectors, viewport sizes and out
     });
 
     config(['screenshots.paths' => [
-        ['route' => 'home', 'directory' => 'home', 'name' => 'with-navbar', 'filename' => 'screenshot-homepage-with-navbar', 'height' => 1024],
-        ['route' => 'home', 'directory' => 'home', 'name' => 'hero', 'filename' => 'screenshot-homepage-hero', 'height' => 1024],
-        ['route' => 'home', 'directory' => 'home', 'name' => 'content', 'filename' => 'screenshot-homepage-content', 'height' => 768],
-        ['route' => 'sortable.files', 'directory' => 'sortable-files', 'name' => 'with-navbar', 'filename' => 'screenshot-sortable-files-with-navbar', 'height' => 1024],
-        ['route' => 'sortable.files', 'directory' => 'sortable-files', 'name' => 'hero', 'filename' => 'screenshot-sortable-files-hero', 'height' => 1024],
-        ['route' => 'sortable.files', 'directory' => 'sortable-files', 'name' => 'content', 'filename' => 'screenshot-sortable-files-content', 'height' => 1024],
-        ['route' => 'sortable.table', 'directory' => 'sortable-table', 'name' => 'with-navbar', 'filename' => 'screenshot-sortable-table-with-navbar', 'height' => 1024],
-        ['route' => 'sortable.table', 'directory' => 'sortable-table', 'name' => 'hero', 'filename' => 'screenshot-sortable-table-hero', 'height' => 1024],
-        ['route' => 'sortable.table', 'directory' => 'sortable-table', 'name' => 'content', 'filename' => 'screenshot-sortable-table-content', 'height' => 1024],
-        ['route' => 'qr', 'directory' => 'qr', 'name' => 'with-navbar', 'filename' => 'screenshot-qr-with-navbar', 'height' => 1024],
-        ['route' => 'qr', 'directory' => 'qr', 'name' => 'hero', 'filename' => 'screenshot-qr-hero', 'height' => 1024],
+        ['route' => 'home', 'directory' => 'home', 'name' => 'with-navbar', 'filename' => 'screenshot-homepage-with-navbar'],
+        ['route' => 'home', 'directory' => 'home', 'name' => 'hero', 'filename' => 'screenshot-homepage-hero'],
+        ['route' => 'home', 'directory' => 'home', 'name' => 'content', 'filename' => 'screenshot-homepage-content'],
+        ['route' => 'sortable.files', 'directory' => 'sortable-files', 'name' => 'with-navbar', 'filename' => 'screenshot-sortable-files-with-navbar'],
+        ['route' => 'sortable.files', 'directory' => 'sortable-files', 'name' => 'hero', 'filename' => 'screenshot-sortable-files-hero'],
+        ['route' => 'sortable.files', 'directory' => 'sortable-files', 'name' => 'content', 'filename' => 'screenshot-sortable-files-content'],
+        ['route' => 'sortable.table', 'directory' => 'sortable-table', 'name' => 'with-navbar', 'filename' => 'screenshot-sortable-table-with-navbar'],
+        ['route' => 'sortable.table', 'directory' => 'sortable-table', 'name' => 'hero', 'filename' => 'screenshot-sortable-table-hero'],
+        ['route' => 'sortable.table', 'directory' => 'sortable-table', 'name' => 'content', 'filename' => 'screenshot-sortable-table-content'],
+        ['route' => 'qr', 'directory' => 'qr', 'name' => 'with-navbar', 'filename' => 'screenshot-qr-with-navbar'],
+        ['route' => 'qr', 'directory' => 'qr', 'name' => 'hero', 'filename' => 'screenshot-qr-hero'],
     ]]);
     $pages = Screenshots::captureAll();
 
@@ -67,7 +67,8 @@ it('captures the core page sections with their selectors, viewport sizes and out
         ->and($captured)->toHaveCount(11)
         ->and($pages['home'][0])->toBe([
             'name' => 'with-navbar',
-            'path' => base_path('storage/app/private/screenshots').DIRECTORY_SEPARATOR.'home'.DIRECTORY_SEPARATOR.'screenshot-homepage-with-navbar.png',
+            'viewport' => 'desktop',
+            'path' => base_path('storage/app/private/screenshots').DIRECTORY_SEPARATOR.'home'.DIRECTORY_SEPARATOR.'screenshot-homepage-with-navbar-desktop.png',
             'width' => 1280,
             'height' => 1024,
         ]);
@@ -82,7 +83,7 @@ it('captures the core page sections with their selectors, viewport sizes and out
     }
 
     expect($captured[3][1]['url'])->toBe(route('sortable.files'))
-        ->and($captured[10][0])->toBe(base_path('storage/app/private/screenshots').DIRECTORY_SEPARATOR.'qr'.DIRECTORY_SEPARATOR.'screenshot-qr-hero.png');
+        ->and($captured[10][0])->toBe(base_path('storage/app/private/screenshots').DIRECTORY_SEPARATOR.'qr'.DIRECTORY_SEPARATOR.'screenshot-qr-hero-desktop.png');
 });
 
 it('captures custom URLs and normalizes filenames while allowing browser customization', function () {
@@ -131,8 +132,8 @@ it('captures configured full pages into a custom output directory', function () 
     foreach (['windowSize', 'timeout', 'setDelay', 'setNodeBinary', 'setNpmBinary', 'setNodeModulePath', 'fullPage'] as $method) {
         $browser->shouldReceive($method)->twice()->andReturnSelf();
     }
-    $browser->shouldReceive('save')->with(base_path('storage/captures').DIRECTORY_SEPARATOR.'about'.DIRECTORY_SEPARATOR.'about.png')->once();
-    $browser->shouldReceive('save')->with(base_path('storage/captures').DIRECTORY_SEPARATOR.'qr'.DIRECTORY_SEPARATOR.'qr.png')->once();
+    $browser->shouldReceive('save')->with(base_path('storage/captures').DIRECTORY_SEPARATOR.'about'.DIRECTORY_SEPARATOR.'about-desktop.png')->once();
+    $browser->shouldReceive('save')->with(base_path('storage/captures').DIRECTORY_SEPARATOR.'qr'.DIRECTORY_SEPARATOR.'qr-desktop.png')->once();
     expect(Screenshots::captureAll())->toHaveKeys(['about', 'qr']);
 });
 
@@ -150,3 +151,67 @@ it('publishes screenshot configuration', function () {
     expect(is_file($published))->toBeTrue();
     unlink($published);
 });
+
+it('captures every default viewport with shared timing and distinct filenames', function () {
+    config(['screenshots.viewports' => (require __DIR__.'/../../config/screenshots.php')['viewports'],
+        'screenshots.paths' => [['path' => '/about', 'name' => 'hero', 'filename' => 'About Hero']],
+        'screenshots.timeout' => 90, 'screenshots.delay' => 500]);
+    $captured = [];
+    $this->app->bind(Browsershot::class, function () use (&$captured) {
+        return new class($captured) extends Browsershot
+        {
+            public function __construct(public array &$captured)
+            {
+                parent::__construct();
+            }
+
+            public function save(string $targetPath): void
+            {
+                $this->captured[] = $this->createScreenshotCommand($targetPath);
+            }
+        };
+    });
+    $results = Screenshots::captureAll()['about'];
+    expect(array_column($results, 'viewport'))->toBe(['desktop', 'tablet-portrait', 'tablet-landscape', 'phone']);
+    foreach (config('screenshots.viewports') as $viewport => $dimensions) {
+        $index = array_search($viewport, array_column($results, 'viewport'), true);
+        expect(basename($results[$index]['path']))->toBe('about-hero-'.$viewport.'.png')
+            ->and($captured[$index]['options']['viewport'])->toMatchArray($dimensions)
+            ->and($captured[$index]['options']['delay'])->toBe(500)
+            ->and($captured[$index]['options']['timeout'])->toBe(90000)
+            ->and($captured[$index]['options']['selector'])->toBe('[data-screenshot="hero"]');
+    }
+});
+
+it('captures only selected viewports as full pages', function () {
+    config(['screenshots.viewports' => (require __DIR__.'/../../config/screenshots.php')['viewports'],
+        'screenshots.paths' => [['path' => '/about', 'viewports' => ['phone', 'desktop']]]]);
+    config(['screenshots.viewports.phone' => ['width' => 412, 'height' => 915]]);
+    $browser = Mockery::mock(Browsershot::class);
+    $this->app->instance(Browsershot::class, $browser);
+    $browser->shouldReceive('windowSize')->with(412, 915)->once()->andReturnSelf();
+    $browser->shouldReceive('windowSize')->with(1280, 1024)->once()->andReturnSelf();
+    foreach (['setUrl', 'timeout', 'setDelay', 'setNodeBinary', 'setNpmBinary', 'setNodeModulePath', 'fullPage', 'save'] as $method) {
+        $browser->shouldReceive($method)->twice()->andReturnSelf();
+    }
+    expect(array_column(Screenshots::captureAll()['about'], 'viewport'))->toBe(['phone', 'desktop']);
+});
+
+it('rejects invalid viewport configuration before starting a browser', function ($viewports, $selection) {
+    config(['screenshots.viewports' => $viewports,
+        'screenshots.paths' => ['/valid', ['path' => '/about', 'viewports' => $selection]]]);
+    $this->app->bind(Browsershot::class, fn () => throw new RuntimeException('Browser must not start.'));
+    Screenshots::captureAll();
+})->with([
+    'not an array' => [false, ['desktop']],
+    'empty definitions' => [[], ['desktop']],
+    'unsafe name' => [['../desktop' => ['width' => 1280, 'height' => 1024]], ['desktop']],
+    'missing height' => [['desktop' => ['width' => 1280]], ['desktop']],
+    'zero width' => [['desktop' => ['width' => 0, 'height' => 1024]], ['desktop']],
+    'fractional height' => [['desktop' => ['width' => 1280, 'height' => 1.5]], ['desktop']],
+    'unknown selection' => [['desktop' => ['width' => 1280, 'height' => 1024]], ['phone']],
+    'empty selection' => [['desktop' => ['width' => 1280, 'height' => 1024]], []],
+    'null selection' => [['desktop' => ['width' => 1280, 'height' => 1024]], null],
+    'string selection' => [['desktop' => ['width' => 1280, 'height' => 1024]], 'desktop'],
+    'duplicate selection' => [['desktop' => ['width' => 1280, 'height' => 1024]], ['desktop', 'desktop']],
+])->throws(InvalidArgumentException::class);

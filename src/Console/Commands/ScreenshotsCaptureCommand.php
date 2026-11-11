@@ -12,7 +12,7 @@ final class ScreenshotsCaptureCommand extends Command
 {
     protected $signature = 'generate:screenshots';
 
-    protected $description = 'Capture all configured page sections as PNG screenshots.';
+    protected $description = 'Capture configured pages and sections at each selected viewport.';
 
     public function handle(ScreenshotsCapture $screenshots): int
     {
@@ -32,8 +32,9 @@ final class ScreenshotsCaptureCommand extends Command
             foreach ($results as $result) {
                 $this->line(
                     sprintf(
-                        '  Captured %s (%dx%d): %s',
+                        '  Captured %s [%s] (%dx%d): %s',
                         $result['name'],
+                        $result['viewport'],
                         $result['width'],
                         $result['height'],
                         $result['path'],

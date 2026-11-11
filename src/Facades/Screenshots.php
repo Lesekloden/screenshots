@@ -7,7 +7,7 @@ namespace Lesekloden\Screenshots\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @method static array<string, list<array{name: string, path: string, width: int, height: int}>> captureAll()
+ * @method static array<string, list<array{name: string, viewport: string, path: string, width: int, height: int}>> captureAll()
  *
  * @see \Lesekloden\Screenshots\Screenshots
  */

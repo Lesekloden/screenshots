@@ -29,13 +29,69 @@ php artisan generate:screenshots
 
 Output is saved in page subdirectories under `storage/app/private/screenshots`.
 
+## Viewports
+
+Each page or section is captured at all four configured viewports by default:
+
+```php
+'viewports' => [
+    'desktop' => ['width' => 1280, 'height' => 1024],
+    'tablet-portrait' => ['width' => 768, 'height' => 1024],
+    'tablet-landscape' => ['width' => 1024, 'height' => 768],
+    'phone' => ['width' => 390, 'height' => 844],
+],
+
+// Shared across all viewports.
+'timeout' => 60, // Seconds.
+'delay' => 250, // Milliseconds.
+```
+
+Customize dimensions or add named viewports to match your application's breakpoints. Names must start with a lowercase letter and contain lowercase letters, numbers, and single hyphens. Dimensions must be positive integers. These presets change browser dimensions; they do not emulate device touch input or user agents.
+
+Select a subset for an individual entry:
+
+```php
+'paths' => [
+    '/about', // All configured viewports; captures the full page.
+    [
+        'route' => 'home',
+        'name' => 'hero', // Selects [data-screenshot="hero"].
+        'filename' => 'homepage-hero', // Base filename without an extension.
+        'viewports' => ['desktop', 'phone'],
+    ],
+],
+```
+
+Selections must be non-empty lists of unique, configured names. Entries use dimensions from the named viewports.
+
+Filenames include the viewport name:
+
+```text
+home/homepage-hero-desktop.png
+home/homepage-hero-phone.png
+about/about-desktop.png
+about/about-tablet-portrait.png
+about/about-tablet-landscape.png
+about/about-phone.png
+```
+
+Full-page images include the whole page and may exceed the viewport height. Named elements are cropped to their matching element. Batch results from `Screenshots::captureAll()` include `name`, `viewport`, `path`, `width`, and `height`; dimensions describe the browser viewport, not necessarily the final image size. The direct `ScreenshotsCapture::captureScreenshot()` API still captures a single image using explicit dimensions and a base filename.
+
+## Screenshots for pull requests
+
+In the consuming Laravel project's CI workflow, install the package and Puppeteer, build application assets, prepare representative data, and start the application. Set `APP_URL` to the running server and run `php artisan generate:screenshots` once the server is ready.
+
+Upload `storage/app/private/screenshots` as a workflow artifact so reviewers can download all viewport captures. A separate workflow step can publish image links or a preview to the pull request. This package generates the PNG files; it does not upload files or post GitHub comments.
+
+For useful before/after reviews, capture the base branch and PR branch into separate artifact directories using the same browser, data, fonts, and viewport configuration. The stable viewport filenames make corresponding images easy to compare.
+
 ## Updating an existing installation
 
 If you previously installed directly from GitHub, remove that repository entry and switch to the stable release:
 
 ```bash
 composer config --unset repositories.lesekloden-screenshots
-composer require lesekloden/lesekloden-screenshots:^1.0 --with-all-dependencies
+composer require lesekloden/lesekloden-screenshots:^2.0 --with-all-dependencies
 ```
 
 For subsequent compatible releases:

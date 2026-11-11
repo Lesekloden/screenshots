@@ -18,7 +18,7 @@ class ScreenshotsCapture
     ) {}
 
     /**
-     * @return array<string, list<array{name: string, path: string, width: int, height: int}>>
+     * @return array<string, list<array{name: string, viewport: string, path: string, width: int, height: int}>>
      */
     public function captureAll(): array
     {
@@ -28,6 +28,8 @@ class ScreenshotsCapture
             throw new InvalidArgumentException('The screenshots.paths setting must be an array.');
         }
 
+        $viewports = $this->viewports();
+        $captures = [];
         $pages = [];
 
         foreach ($paths as $entry) {
@@ -52,11 +54,28 @@ class ScreenshotsCapture
             $directory = $entry['directory'] ?? $slug;
             $name = $entry['name'] ?? '';
             $filename = $entry['filename'] ?? ($name === '' ? $slug : $slug.'-'.$name);
-            $pages[$directory][] = $this->captureScreenshot(
-                $url, $directory, $name, $filename,
-                (int) ($entry['width'] ?? config('screenshots.width', 1280)),
-                (int) ($entry['height'] ?? config('screenshots.height', 1024)),
+            $selection = array_key_exists('viewports', $entry) ? $entry['viewports'] : array_keys($viewports);
+
+            if (! is_array($selection) || ! array_is_list($selection) || $selection === []) {
+                throw new InvalidArgumentException('Each screenshot viewport selection must be a non-empty list of names.');
+            }
+
+            $selected = [];
+            foreach ($selection as $viewport) {
+                if (! is_string($viewport) || ! isset($viewports[$viewport]) || isset($selected[$viewport])) {
+                    throw new InvalidArgumentException('Screenshot viewport selections must contain unique, configured names.');
+                }
+                $selected[$viewport] = true;
+                $captures[] = [$url, $directory, $name, $filename, $viewport];
+            }
+        }
+
+        foreach ($captures as [$url, $directory, $name, $filename, $viewport]) {
+            $result = $this->captureScreenshot(
+                $url, $directory, $name, $filename.'-'.$viewport,
+                $viewports[$viewport]['width'], $viewports[$viewport]['height'],
             );
+            $pages[$directory][] = ['name' => $result['name'], 'viewport' => $viewport, 'path' => $result['path'], 'width' => $result['width'], 'height' => $result['height']];
         }
 
         return $pages;
@@ -112,6 +131,34 @@ class ScreenshotsCapture
             'width' => $width,
             'height' => $height,
         ];
+    }
+
+    /**
+     * @return array<string, array{width: int, height: int}>
+     */
+    private function viewports(): array
+    {
+        $viewports = config('screenshots.viewports');
+
+        if (! is_array($viewports) || $viewports === []) {
+            throw new InvalidArgumentException('The screenshots.viewports setting must be a non-empty array.');
+        }
+
+        $validated = [];
+        foreach ($viewports as $name => $dimensions) {
+            if (! is_string($name) || preg_match('/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/D', $name) !== 1) {
+                throw new InvalidArgumentException('Viewport names must use lowercase letters, numbers and single hyphens, starting with a letter.');
+            }
+
+            if (! is_array($dimensions) || ! isset($dimensions['width'], $dimensions['height'])
+                || ! is_int($dimensions['width']) || ! is_int($dimensions['height'])
+                || $dimensions['width'] < 1 || $dimensions['height'] < 1) {
+                throw new InvalidArgumentException("Viewport [{$name}] must define positive integer width and height values.");
+            }
+            $validated[$name] = ['width' => $dimensions['width'], 'height' => $dimensions['height']];
+        }
+
+        return $validated;
     }
 
     private function browser(string $url, int $width, int $height): Browsershot
