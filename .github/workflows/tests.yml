@@ -56,7 +56,8 @@ jobs:
         run: composer analyse
 
       - name: Linter
-        run: composer lint:check
+        # Avoid Pint's Blade summary renderer, which fails on Windows.
+        run: composer lint:check -- --format=txt
 
       - name: Type Coverage
         if: runner.os != 'Windows'
